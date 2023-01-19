@@ -15,8 +15,8 @@
 #include "addons/RTDBHelper.h"
 
 // Insert your network credentials
-#define WIFI_SSID "Infinix HOT 10"
-#define WIFI_PASSWORD "Algo12345"
+#define WIFI_SSID "jz"
+#define WIFI_PASSWORD "42700203"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyCitYtCGLHg9aoDjsf3Sh6KSmxJaodWMDs"
@@ -25,8 +25,8 @@
 #define DATABASE_URL "https://console.firebase.google.com/project/medidor-e8147/database/medidor-e8147-default-rtdb/data/~2F" 
 
 // Define the credentials for the ESP32
-#define USER_EMAIL "admin@main.com"
-#define USER_PASSWORD "admin123"
+#define USER_EMAIL "admin@admin.com"
+#define USER_PASSWORD "adminadmin"
 
 
 //Define Firebase Data object
@@ -47,7 +47,7 @@ String tipo;
 #define COLUMS 16
 #define ROWS   2
 #define PAGE   ((COLUMS) * (ROWS))
-LiquidCrystal_I2C lcd(PCF8574_ADDR_A21_A11_A01, 4, 5, 6, 16, 11, 12, 13, 14, POSITIVE);
+LiquidCrystal_I2C lcd(PCF8574A_ADDR_A21_A11_A01, 4, 5, 6, 16, 11, 12, 13, 14, POSITIVE);
 
 // Matriz de factores comerciales de resistencias
 float resCom [14] ={1,1.2,1.5,1.8,2.2,2.4,2.7,3.3,3.9,4.7,5.1,5.6,6.8,8.2};
@@ -150,8 +150,8 @@ float calculoRes()
     }
   }
   
-  voltage = (voltage/muestras)+0.2;
-  float current = (3.313-voltage)/9830.9;
+  voltage = (voltage/muestras)+0.3;
+  float current = (3.313-voltage)/9750.9;
   float res = voltage/current;
   return escogerRes(res);
 }
@@ -164,6 +164,7 @@ void tono()
 }
 
 void setup() {
+  Serial.begin(115200);
   lcd.begin(COLUMS,ROWS);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   lcd.setCursor(0,0);
@@ -191,8 +192,9 @@ void setup() {
   /* Assign the callback function for the long running token generation task */
   config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
   
-  Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+  Firebase.begin(&config, &auth);
+ 
 
   pinMode(bt_modo,INPUT_PULLUP);
   pinMode(bt_aceptar,INPUT_PULLUP);
@@ -206,7 +208,7 @@ void setup() {
   pinMode(buzzer,OUTPUT);
 
 
-
+  lcd.clear();
   lcd.setCursor(2,0);
   lcd.print("**Ecuares**");
   delay(2000);
@@ -282,31 +284,28 @@ void loop()
       */
      if (digitalRead(led_1_4w)== HIGH)
      {
-      tipo = "/1_4W/";
+      tipo = "/1_4W";
      }
      else
      {
-      tipo = "/1_2W/";
+      tipo = "/1_2W";
      }
 
-     String valor_res = String(valorRes);
+     complete_path = "/datos";
      complete_path += tipo;
-     complete_path += valor_res;
-
-
+     
      if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0))
      {
+      sendDataPrevMillis = millis();
       if (Firebase.RTDB.getInt(&fbdo, complete_path)) 
       {
         if (fbdo.dataType() == "int") 
         {
           valor = fbdo.intData();
-          Serial.println(valor);
         }
       }
       else 
       {
-        Serial.println(fbdo.errorReason());
         valor = 1;
       }
       
