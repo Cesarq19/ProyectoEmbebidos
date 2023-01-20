@@ -36,7 +36,6 @@ FirebaseConfig config;
 
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
-bool signupOK = false;
 
 int valor = 0;
 
@@ -177,7 +176,7 @@ void setup() {
   lcd.print("Conexion");
   lcd.setCursor(3,1);
   lcd.print("exitosa");
-  delay(1500);
+  delay(500);
 
   /* Assign the api key (required) */
   config.api_key = API_KEY;
@@ -192,10 +191,9 @@ void setup() {
   /* Assign the callback function for the long running token generation task */
   config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
   
-  Firebase.reconnectWiFi(true);
   Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
  
-
   pinMode(bt_modo,INPUT_PULLUP);
   pinMode(bt_aceptar,INPUT_PULLUP);
   pinMode(bt_mostrar,INPUT_PULLUP);
@@ -207,14 +205,97 @@ void setup() {
   pinMode(led_1_4w,OUTPUT);
   pinMode(buzzer,OUTPUT);
 
-
   lcd.clear();
   lcd.setCursor(2,0);
   lcd.print("**Ecuares**");
-  delay(2000);
+  delay(1000);
   lcd.clear();
 }
 
+void registro()
+{
+  lcd.clear();
+  float valorRes = calculoRes();
+  lcd.setCursor(2,0);
+  lcd.printf("R= %.2f",valorRes);      
+  lcd.setCursor(2,1);
+
+  if (digitalRead(led_1_2w)==HIGH)
+  {
+    lcd.print("P=1/2W");
+  }
+  else
+  {
+    lcd.print("P=1/4W");
+  }
+  
+  delay(1500);
+  
+  if (digitalRead(led_1_4w)== HIGH)
+  {
+    tipo = "/1_4W";
+  }
+  else
+  {
+    tipo = "/1_2W";
+  }
+
+  complete_path = "/datos";
+  complete_path += tipo;
+
+  database_connect(complete_path);
+
+  digitalWrite(led_1_2w,LOW);
+  digitalWrite(led_1_4w,LOW);
+  
+  }
+
+void database_connect(String path)
+{
+  if(Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0))
+  {
+    sendDataPrevMillis = millis();
+
+    if(Firebase.RTDB.getInt(&fbdo,path,&valor))
+    {
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("**Resistencia**");
+      lcd.setCursor(1,1);
+      lcd.print("*existente*");
+      delay(500);
+
+      if(Firebase.RTDB.setInt(&fbdo,path,valor+1))
+      {
+        lcd.clear();
+        lcd.setCursor(1,0);
+        lcd.print("**Agregando**");
+        lcd.setCursor(0,1);
+        lcd.print(".........");
+        delay(500);
+      }
+      else
+      {
+        lcd.clear();
+        lcd.setCursor(2,0);
+        lcd.print("**Fallo**");
+        delay(700);
+      }
+
+
+    }
+    else
+    {
+      valor = 1;
+      lcd.clear();
+      lcd.setCursor(3,0);
+      lcd.print("**Nueva**");
+      lcd.setCursor(0,1);
+      lcd.print("**resistencia**");
+      delay(500);
+    }
+  }
+}
 
 
 void loop() 
@@ -256,105 +337,7 @@ void loop()
           mostrar = true;
         }
       }
-      
-      if(mostrar)
-      {
-        break;
-      }
-
-      lcd.clear();
-
-      float valorRes = calculoRes();
-      lcd.setCursor(2,0);
-      lcd.printf("R= %.2f",valorRes);      
-      lcd.setCursor(2,1);
-      if (digitalRead(led_1_2w)==HIGH)
-      {
-        lcd.print("P=1/2W");
-      }
-      else
-      {
-        lcd.print("P=1/4W");
-      }
-      delay(1500);
-      digitalWrite(led_1_2w,LOW);
-      digitalWrite(led_1_4w,LOW);
-      /*
-        Almacenar resistencia y potencia
-      */
-     if (digitalRead(led_1_4w)== HIGH)
-     {
-      tipo = "/1_4W";
-     }
-     else
-     {
-      tipo = "/1_2W";
-     }
-
-     complete_path = "/datos";
-     complete_path += tipo;
-     
-     if (Firebase.ready() && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0))
-     {
-      sendDataPrevMillis = millis();
-      if (Firebase.RTDB.getInt(&fbdo, complete_path)) 
-      {
-        if (fbdo.dataType() == "int") 
-        {
-          valor = fbdo.intData();
-        }
-      }
-      else 
-      {
-        valor = 1;
-      }
-      
-      if(valor>1)
-      {
-        Firebase.RTDB.setInt(&fbdo,complete_path,valor+1);
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.printf("Resistor");
-        lcd.setCursor(2,1);
-        lcd.print("agregado");
-        delay(1500);
-      }
-      else
-      {
-        Firebase.RTDB.setInt(&fbdo,complete_path,valor);
-        lcd.clear();
-        lcd.setCursor(0,0);
-        lcd.print("Nuevo resistor");
-        lcd.setCursor(2,1);
-        lcd.print("agregado");
-        delay(1500);
-      }
     }
-    else 
-    {
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Fallo en");
-      lcd.setCursor(2,1);
-      lcd.print("agregar");
-      delay(1500);
-    }
-      modo = true;
-    }
-
-    FirebaseJson json_cuarto;
-    FirebaseJson json_medio;
-
-    Firebase.RTDB.setJSON(&fbdo,"/datos/1_2W/", &json_medio);
-    Firebase.RTDB.setJSON(&fbdo,"/datos/1_4W/", &json_cuarto);
-
-    //Serial.println(json_cuarto);
-    //Serial.println(json_medio);
-
-    mostrar = false;
-    modo = true;
-
-
 }
 
 
